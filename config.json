@@ -1,0 +1,42 @@
+{
+  "click_buttons": [
+    {
+      "name": "Ana Sayfa (Giriş)",
+      "x": 29,
+      "y": 32,
+      "enabled": true
+    },
+    {
+      "name": "e-Reçete Sorgu",
+      "x": 59,
+      "y": 197,
+      "enabled": true
+    }
+  ],
+  "min_interval_seconds": 60,
+  "max_interval_seconds": 120,
+  "idle_wait_seconds": 30,
+  "start_minimized": false,
+  "auto_relogin": true,
+  "check_interval_seconds": 30,
+  "login_settings": {
+    "desktop_exe_x": 1850,
+    "desktop_exe_y": 869,
+    "username_combobox_x": 969,
+    "username_combobox_y": 485,
+    "user_selection_method": "index",
+    "user_index": 4,
+    "password_x": 952,
+    "password_y": 534,
+    "login_button_x": 955,
+    "login_button_y": 577,
+    "main_page_button_x": 29,
+    "main_page_button_y": 32,
+    "window_title_contains": "MEDULA",
+    "login_window_title": "BotanikEOS",
+    "general_announcements_check_x": 1041,
+    "general_announcements_check_y": 217,
+    "wait_after_exe_click": 5,
+    "wait_after_login": 10
+  }
+}
