@@ -1,6 +1,6 @@
 """
-ACMEDULA - Medula Oturum Koruma Programi v3.1
-Medula sisteminden düşmemeyi sağlamak için akıllı otomatik tıklama yapar.
+ACS Servis v3.2
+Oturum koruma servisi.
 Sistem düşerse otomatik olarak tekrar giriş yapar.
 """
 
@@ -27,9 +27,39 @@ pyautogui.PAUSE = 0.1
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 DEFAULT_CONFIG = {
-    "click_buttons": [
-        {"name": "Ana Sayfa (Giriş)", "x": 29, "y": 32, "enabled": True},
-        {"name": "e-Reçete Sorgu", "x": 59, "y": 197, "enabled": True}
+    "click_scenarios": [
+        {
+            "name": "Önce-Sonra",
+            "enabled": True,
+            "steps": [
+                {"description": "Önce butonu", "x": 543, "y": 86, "wait_after": 2},
+                {"description": "Sonra butonu", "x": 595, "y": 87, "wait_after": 1}
+            ]
+        },
+        {
+            "name": "Sonra-Önce",
+            "enabled": True,
+            "steps": [
+                {"description": "Sonra butonu", "x": 595, "y": 87, "wait_after": 2},
+                {"description": "Önce butonu", "x": 543, "y": 86, "wait_after": 1}
+            ]
+        },
+        {
+            "name": "e-Reçete Kaydet",
+            "enabled": True,
+            "steps": [
+                {"description": "e-Reçete Kaydet", "x": 578, "y": 823, "wait_after": 2}
+            ]
+        },
+        {
+            "name": "İlaç Bilgi Aç-Kapat",
+            "enabled": False,
+            "steps": [
+                {"description": "İlaç satırı seç", "x": 418, "y": 561, "wait_after": 1},
+                {"description": "İlaç Bilgi butonu", "x": 632, "y": 488, "wait_after": 3},
+                {"description": "Geri Dön", "x": 703, "y": 170, "wait_after": 1}
+            ]
+        }
     ],
     "min_interval_seconds": 60,
     "max_interval_seconds": 120,
@@ -65,7 +95,7 @@ class LoginDialog(tk.Toplevel):
 
     def __init__(self, parent, config):
         super().__init__(parent)
-        self.title("ACMEDULA - Giriş Bilgileri")
+        self.title("ACS Servis - Giriş Bilgileri")
         self.geometry("480x380")
         self.resizable(False, False)
         self.config = config
@@ -230,7 +260,7 @@ class LoginDialog(tk.Toplevel):
 class ACMedulaApp:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("ACMEDULA - Medula Oturum Koruma v3.1")
+        self.root.title("ACS Servis v3.2")
         self.root.geometry("800x750")
         self.root.resizable(True, True)
 
@@ -466,16 +496,16 @@ class ACMedulaApp:
         ttk.Spinbox(row3, from_=10, to=120, width=10,
                     textvariable=self.idle_wait_var).pack(side=tk.LEFT, padx=5)
 
-        buttons_frame = ttk.LabelFrame(self.settings_frame, text="Tıklanacak Butonlar", padding=10)
-        buttons_frame.pack(fill=tk.X, padx=10, pady=10)
+        scenarios_frame = ttk.LabelFrame(self.settings_frame, text="Tıklama Senaryoları", padding=10)
+        scenarios_frame.pack(fill=tk.X, padx=10, pady=10)
 
-        self.btn1_enabled_var = tk.BooleanVar(value=self.config["click_buttons"][0]["enabled"])
-        ttk.Checkbutton(buttons_frame, text="Ana Sayfa (Giriş) - X:29, Y:32",
-                        variable=self.btn1_enabled_var).pack(anchor=tk.W)
-
-        self.btn2_enabled_var = tk.BooleanVar(value=self.config["click_buttons"][1]["enabled"])
-        ttk.Checkbutton(buttons_frame, text="e-Reçete Sorgu - X:59, Y:197",
-                        variable=self.btn2_enabled_var).pack(anchor=tk.W)
+        self.scenario_vars = []
+        for i, scenario in enumerate(self.config.get("click_scenarios", [])):
+            steps_desc = " -> ".join(s["description"] for s in scenario["steps"])
+            var = tk.BooleanVar(value=scenario.get("enabled", False))
+            self.scenario_vars.append(var)
+            ttk.Checkbutton(scenarios_frame, text=f"{scenario['name']}  [{steps_desc}]",
+                            variable=var).pack(anchor=tk.W, pady=2)
 
         auto_frame = ttk.LabelFrame(self.settings_frame, text="Otomatik Giriş", padding=10)
         auto_frame.pack(fill=tk.X, padx=10, pady=10)
@@ -710,8 +740,9 @@ class ACMedulaApp:
             self.config["min_interval_seconds"] = min_val
             self.config["max_interval_seconds"] = max_val
             self.config["idle_wait_seconds"] = int(self.idle_wait_var.get())
-            self.config["click_buttons"][0]["enabled"] = self.btn1_enabled_var.get()
-            self.config["click_buttons"][1]["enabled"] = self.btn2_enabled_var.get()
+            for i, var in enumerate(self.scenario_vars):
+                if i < len(self.config.get("click_scenarios", [])):
+                    self.config["click_scenarios"][i]["enabled"] = var.get()
             self.config["auto_relogin"] = self.auto_relogin_var.get()
             self.config["start_minimized"] = self.start_minimized_var.get()
 
@@ -753,7 +784,9 @@ class ACMedulaApp:
         max_sec = self.config["max_interval_seconds"]
         idle = self.config["idle_wait_seconds"]
 
-        enabled_btns = sum(1 for b in self.config["click_buttons"] if b["enabled"])
+        scenarios = self.config.get("click_scenarios", [])
+        enabled_count = sum(1 for s in scenarios if s.get("enabled"))
+        enabled_names = [s["name"] for s in scenarios if s.get("enabled")]
         auto = "Açık" if self.config.get("auto_relogin", True) else "Kapalı"
 
         method = self.config["login_settings"].get("user_selection_method", "index")
@@ -761,7 +794,7 @@ class ACMedulaApp:
 
         summary = f"Tıklama Aralığı: {min_sec}-{max_sec} saniye (random)\n"
         summary += f"Aktivite Bekleme: {idle} saniye | Kullanıcı: {user_info}\n"
-        summary += f"Aktif Buton: {enabled_btns} adet | Otomatik Giriş: {auto}"
+        summary += f"Aktif Senaryo: {enabled_count} adet ({', '.join(enabled_names)}) | Oto Giriş: {auto}"
 
         self.summary_label.config(text=summary)
 
@@ -803,6 +836,76 @@ class ACMedulaApp:
         title = self.get_foreground_window_title()
         return self.config["login_settings"]["window_title_contains"].lower() in title.lower()
 
+    def bring_medula_to_front(self):
+        """Medula penceresini ön plana getir"""
+        try:
+            is_running, windows = self.is_medula_running()
+            if is_running and windows:
+                hwnd = windows[0][0]
+                # Minimize edilmişse geri getir
+                SW_RESTORE = 9
+                ctypes.windll.user32.ShowWindow(hwnd, SW_RESTORE)
+                time.sleep(0.3)
+                # Ön plana getir
+                ctypes.windll.user32.SetForegroundWindow(hwnd)
+                time.sleep(0.5)
+                self.log(f"Medula ön plana getirildi: {windows[0][1]}")
+                return True
+            else:
+                self.log("UYARI: Medula penceresi bulunamadı!")
+                return False
+        except Exception as e:
+            self.log(f"Pencere ön plana getirme hatası: {e}")
+            return False
+
+    def is_medula_hung(self):
+        """Medula penceresi donmuş mu kontrol et"""
+        try:
+            is_running, windows = self.is_medula_running()
+            if not is_running:
+                return False
+            for hwnd, title in windows:
+                if ctypes.windll.user32.IsHungAppWindow(hwnd):
+                    self.log(f"UYARI: Medula donmuş! ({title})")
+                    return True
+            return False
+        except Exception as e:
+            self.log(f"Donma kontrol hatası: {e}")
+            return False
+
+    def ensure_medula_alive(self):
+        """Medula'nın açık ve sağlıklı olduğundan emin ol. Değilse kapat ve yeniden aç."""
+        is_running, windows = self.is_medula_running()
+
+        # Medula donmuşsa zorla kapat
+        if is_running and self.is_medula_hung():
+            self.log("Medula donmuş - zorla kapatılıyor...")
+            self.root.after(0, lambda: self.medula_status_var.set("Medula: DONMUŞ - Kapatılıyor"))
+            self.kill_medula()
+            time.sleep(2)
+            is_running = False
+
+        # Medula kapalıysa yeniden aç
+        if not is_running:
+            self.log("Medula kapalı - yeniden başlatılıyor...")
+            self.root.after(0, lambda: self.medula_status_var.set("Medula: KAPALI - Yeniden açılıyor"))
+            success = self.perform_login()
+            if success:
+                ls = self.config["login_settings"]
+                time.sleep(3)
+                self.bring_medula_to_front()
+                pyautogui.click(ls["main_page_button_x"], ls["main_page_button_y"])
+                time.sleep(2)
+                self.root.after(0, lambda: self.medula_status_var.set("Medula: AKTİF"))
+                return True
+            else:
+                self.log("HATA: Medula yeniden açılamadı!")
+                self.root.after(0, lambda: self.medula_status_var.set("Medula: AÇILAMADI"))
+                return False
+
+        self.root.after(0, lambda: self.medula_status_var.set("Medula: AKTİF"))
+        return True
+
     def check_general_announcements(self):
         try:
             is_running, _ = self.is_medula_running()
@@ -813,12 +916,19 @@ class ACMedulaApp:
 
     def kill_medula(self):
         try:
-            self.log("Medula kapatılıyor...")
+            self.log("Medula kapatılıyor (taskkill)...")
             subprocess.run(["taskkill", "/F", "/IM", "BotanikEOS.exe"],
                          capture_output=True, shell=True)
             time.sleep(2)
+            # Hala açıksa tüm süreçleri de öldür
+            is_running, _ = self.is_medula_running()
+            if is_running:
+                self.log("Hala açık - tekrar kapatılıyor...")
+                subprocess.run(["taskkill", "/F", "/T", "/IM", "BotanikEOS.exe"],
+                             capture_output=True, shell=True)
+                time.sleep(2)
             self.log("Medula kapatıldı")
-            self.medula_status_var.set("Medula: KAPATILDI")
+            self.root.after(0, lambda: self.medula_status_var.set("Medula: KAPATILDI"))
         except Exception as e:
             self.log(f"Taskkill hatası: {e}")
 
@@ -977,6 +1087,26 @@ class ACMedulaApp:
         with self.activity_lock:
             return time.time() - self.last_activity_time
 
+    def execute_scenario(self, scenario):
+        """Bir senaryodaki tüm adımları sırayla çalıştır"""
+        self.log(f"Senaryo başlatılıyor: {scenario['name']}")
+        # Önce Medula penceresini ön plana getir
+        if not self.bring_medula_to_front():
+            self.log("Medula ön plana getirilemedi - senaryo iptal!")
+            return False
+        for step in scenario["steps"]:
+            if self.stop_event.is_set():
+                return False
+            self.log(f"  -> {step['description']} ({step['x']}, {step['y']})")
+            pyautogui.click(step["x"], step["y"])
+            wait = step.get("wait_after", 1)
+            for _ in range(int(wait * 10)):
+                if self.stop_event.is_set():
+                    return False
+                time.sleep(0.1)
+        self.log(f"Senaryo tamamlandı: {scenario['name']}")
+        return True
+
     # === Ana Koruma Döngüsü ===
 
     def start_protection(self):
@@ -987,9 +1117,9 @@ class ACMedulaApp:
             messagebox.showwarning("Uyarı", "Önce giriş bilgilerini girin!")
             return
 
-        enabled = [b for b in self.config["click_buttons"] if b["enabled"]]
+        enabled = [s for s in self.config.get("click_scenarios", []) if s.get("enabled")]
         if not enabled:
-            messagebox.showwarning("Uyarı", "En az bir buton aktif olmalı!")
+            messagebox.showwarning("Uyarı", "En az bir senaryo aktif olmalı!")
             return
 
         self.is_running = True
@@ -1025,100 +1155,88 @@ class ACMedulaApp:
 
     def protection_loop(self):
         ls = self.config["login_settings"]
+        check_interval = self.config.get("check_interval_seconds", 30)
 
         self.log("İlk sistem kontrolü yapılıyor...")
 
-        is_running, _ = self.is_medula_running()
+        # İlk açılışta Medula'nın açık olduğundan emin ol
+        self.ensure_medula_alive()
 
-        if not is_running:
-            self.log("Medula kapalı - otomatik giriş yapılıyor...")
-            self.root.after(0, lambda: self.medula_status_var.set("Medula: KAPALI - Giriş yapılıyor"))
-            self.perform_login()
-            time.sleep(3)
+        self.log("Sistem aktif - koruma döngüsüne başlanıyor...")
 
-        # Ana sayfaya git
-        self.log("Ana sayfaya gidiliyor...")
-        pyautogui.click(ls["main_page_button_x"], ls["main_page_button_y"])
-        time.sleep(2)
-
-        if not self.check_general_announcements():
-            self.log("Sistem aktif değil - yeniden giriş yapılıyor...")
-            self.perform_login()
-            time.sleep(3)
-            pyautogui.click(ls["main_page_button_x"], ls["main_page_button_y"])
-            time.sleep(2)
-
-        self.root.after(0, lambda: self.medula_status_var.set("Medula: AKTİF"))
-        self.log("Sistem aktif - tıklama döngüsüne başlanıyor...")
+        last_health_check = time.time()
+        last_click_time = time.time()
 
         while not self.stop_event.is_set():
             try:
-                min_sec = self.config["min_interval_seconds"]
-                max_sec = self.config["max_interval_seconds"]
-                wait_seconds = random.randint(min_sec, max_sec)
+                time.sleep(1)
+                if self.stop_event.is_set():
+                    return
 
-                self.log(f"Sonraki tıklama: {wait_seconds} saniye")
+                now = time.time()
 
-                for remaining in range(wait_seconds, 0, -1):
-                    if self.stop_event.is_set():
-                        return
+                # --- SAĞLIK KONTROLÜ (her check_interval saniyede bir) ---
+                if now - last_health_check >= check_interval:
+                    last_health_check = now
 
-                    idle_time = self.get_idle_time()
-                    idle_wait = self.config["idle_wait_seconds"]
+                    # Medula açık mı ve sağlıklı mı?
+                    is_running, _ = self.is_medula_running()
+                    is_hung = self.is_medula_hung() if is_running else False
 
-                    if self.is_medula_foreground() and idle_time < idle_wait:
-                        self.root.after(0, lambda: self.activity_status_var.set(
-                            f"Aktivite: Kullanıcı aktif (bekliyor)"))
-                        self.root.after(0, lambda: self.countdown_var.set(
-                            f"Kullanıcı aktif - bekleniyor..."))
+                    if not is_running or is_hung:
+                        if is_hung:
+                            self.log("UYARI: Medula donmuş! Kapatılıp yeniden açılacak...")
+                        else:
+                            self.log("UYARI: Medula kapalı! Yeniden açılacak...")
 
-                        while self.get_idle_time() < idle_wait and not self.stop_event.is_set():
-                            time.sleep(1)
-
-                        if self.stop_event.is_set():
-                            return
-
-                        wait_seconds = random.randint(min_sec, max_sec)
-                        self.log(f"Aktivite bitti - yeni bekleme: {wait_seconds} saniye")
-                        remaining = wait_seconds
+                        if self.config.get("auto_relogin", True):
+                            self.ensure_medula_alive()
+                            last_click_time = now  # Yeni giriş sonrası sayacı sıfırla
                         continue
+                    else:
+                        self.root.after(0, lambda: self.medula_status_var.set("Medula: AKTİF"))
 
-                    self.root.after(0, lambda r=remaining: self.countdown_var.set(
-                        f"Sonraki tıklama: {r} saniye"))
+                # --- AKTİVİTE KONTROLÜ ---
+                idle_time = self.get_idle_time()
+                idle_wait = self.config["idle_wait_seconds"]
+
+                if self.is_medula_foreground() and idle_time < idle_wait:
                     self.root.after(0, lambda: self.activity_status_var.set(
-                        f"Aktivite: Boşta ({int(idle_time)}s)"))
-
-                    time.sleep(1)
-
-                is_running, _ = self.is_medula_running()
-
-                if not is_running:
-                    self.log("UYARI: Medula kapalı tespit edildi!")
-                    self.root.after(0, lambda: self.medula_status_var.set("Medula: KAPALI"))
-
-                    if self.config.get("auto_relogin", True):
-                        self.log("Otomatik giriş yapılıyor...")
-                        self.perform_login()
-                        time.sleep(3)
-                        pyautogui.click(ls["main_page_button_x"], ls["main_page_button_y"])
-                        time.sleep(2)
+                        f"Aktivite: Kullanıcı aktif (bekliyor)"))
+                    self.root.after(0, lambda: self.countdown_var.set(
+                        f"Kullanıcı aktif - bekleniyor..."))
+                    last_click_time = now  # Kullanıcı aktifken sayacı sıfırla
                     continue
 
-                enabled_buttons = [b for b in self.config["click_buttons"] if b["enabled"]]
-                if enabled_buttons:
-                    button = random.choice(enabled_buttons)
+                # --- TIKLAMA ZAMANI KONTROLÜ ---
+                min_sec = self.config["min_interval_seconds"]
+                max_sec = self.config["max_interval_seconds"]
+                click_interval = random.randint(min_sec, max_sec) if not hasattr(self, '_next_click_interval') else self._next_click_interval
 
-                    self.log(f"Tıklanıyor: {button['name']} ({button['x']}, {button['y']})")
-                    pyautogui.click(button["x"], button["y"])
+                elapsed_since_click = now - last_click_time
+                remaining = max(0, int(click_interval - elapsed_since_click))
 
-                    self.click_count += 1
-                    self.root.after(0, lambda: self.click_count_var.set(f"Toplam Tıklama: {self.click_count}"))
+                self.root.after(0, lambda r=remaining: self.countdown_var.set(
+                    f"Sonraki tıklama: {r} saniye"))
+                self.root.after(0, lambda it=int(idle_time): self.activity_status_var.set(
+                    f"Aktivite: Boşta ({it}s)"))
 
-                    now = datetime.now().strftime("%H:%M:%S")
-                    self.root.after(0, lambda b=button, t=now: self.last_click_var.set(
-                        f"Son Tıklama: {t} - {b['name']}"))
+                if elapsed_since_click >= click_interval:
+                    # Tıklama zamanı geldi
+                    enabled_scenarios = [s for s in self.config.get("click_scenarios", []) if s.get("enabled")]
+                    if enabled_scenarios:
+                        scenario = random.choice(enabled_scenarios)
+                        self.execute_scenario(scenario)
 
-                self.root.after(0, lambda: self.medula_status_var.set("Medula: AKTİF"))
+                        self.click_count += 1
+                        self.root.after(0, lambda: self.click_count_var.set(f"Toplam Tıklama: {self.click_count}"))
+
+                        click_time = datetime.now().strftime("%H:%M:%S")
+                        self.root.after(0, lambda s=scenario, t=click_time: self.last_click_var.set(
+                            f"Son Tıklama: {t} - {s['name']}"))
+
+                    last_click_time = now
+                    self._next_click_interval = random.randint(min_sec, max_sec)
 
             except Exception as e:
                 self.log(f"Döngü hatası: {e}")
@@ -1137,7 +1255,7 @@ class ACMedulaApp:
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Çıkış", self.quit_app)
             )
-            self.tray_icon = pystray.Icon("ACMEDULA", self.icon_image, "ACMEDULA", menu)
+            self.tray_icon = pystray.Icon("ACSServis", self.icon_image, "ACS Servis", menu)
             threading.Thread(target=self.tray_icon.run, daemon=True).start()
 
     def show_from_tray(self, icon=None, item=None):

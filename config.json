@@ -1,19 +1,79 @@
 {
-  "click_buttons": [
+  "click_scenarios": [
     {
-      "name": "Ana Sayfa (Giriş)",
-      "x": 29,
-      "y": 32,
-      "enabled": true
+      "name": "Önce-Sonra",
+      "enabled": true,
+      "steps": [
+        {
+          "description": "Önce butonu",
+          "x": 543,
+          "y": 86,
+          "wait_after": 2
+        },
+        {
+          "description": "Sonra butonu",
+          "x": 595,
+          "y": 87,
+          "wait_after": 1
+        }
+      ]
     },
     {
-      "name": "e-Reçete Sorgu",
-      "x": 59,
-      "y": 197,
-      "enabled": true
+      "name": "Sonra-Önce",
+      "enabled": true,
+      "steps": [
+        {
+          "description": "Sonra butonu",
+          "x": 595,
+          "y": 87,
+          "wait_after": 2
+        },
+        {
+          "description": "Önce butonu",
+          "x": 543,
+          "y": 86,
+          "wait_after": 1
+        }
+      ]
+    },
+    {
+      "name": "e-Reçete Kaydet",
+      "enabled": true,
+      "steps": [
+        {
+          "description": "e-Reçete Kaydet",
+          "x": 578,
+          "y": 823,
+          "wait_after": 2
+        }
+      ]
+    },
+    {
+      "name": "İlaç Bilgi Aç-Kapat",
+      "enabled": false,
+      "steps": [
+        {
+          "description": "İlaç satırı seç",
+          "x": 418,
+          "y": 561,
+          "wait_after": 1
+        },
+        {
+          "description": "İlaç Bilgi butonu",
+          "x": 632,
+          "y": 488,
+          "wait_after": 3
+        },
+        {
+          "description": "Geri Dön",
+          "x": 703,
+          "y": 170,
+          "wait_after": 1
+        }
+      ]
     }
   ],
-  "min_interval_seconds": 60,
+  "min_interval_seconds": 100,
   "max_interval_seconds": 120,
   "idle_wait_seconds": 30,
   "start_minimized": false,
