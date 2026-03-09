@@ -1,0 +1,3 @@
+@echo off
+echo ACS Baslatiliyor...
+pythonw acmedula.py
